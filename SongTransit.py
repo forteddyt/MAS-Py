@@ -118,14 +118,14 @@ def db_insert_spectrum(curs, visual_data, recording_id):
 	values_list = []
 	for rowIndex, rowData in enumerate(visual_data):
 		for colIndex, colData in enumerate(rowData): # colData is the value
-			value = (rowIndex, colIndex, colData, recording_id)
+			value = [(rowIndex, colIndex, colData, recording_id)]
 			values_list.append(value)
 
 
 	e = timeit.default_timer() - st
 	print("	Loop-iteration time: " + str(e))
 
-	psycopg2.extras.execute_values(curs, sql, values_list)
+	psycopg2.extras.execute_batch(curs, sql, values_list, page_size=100000)
 
 
 # Move songs from Downloads (where MASV-Map puts them) to this repository's "SongData" directory
