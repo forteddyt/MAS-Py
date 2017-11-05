@@ -4,6 +4,12 @@ import psycopg2,psycopg2.extras
 import json
 import timeit
 
+try:
+    # Python2
+    from cStringIO import StringIO 
+except ImportError:
+    # Python3
+    from io import StringIO
 
 
 downloaded_song_paths = glob.glob("C:\\Users\\user\\Downloads\\*_ESD_.json")
@@ -107,25 +113,23 @@ def db_insert_recording(curs, frequency, down_scale, forced_stop, song_id):
 # With the recordingID as it's parent
 # Return nothing, since mass-insertion is being done
 def db_insert_spectrum(curs, visual_data, recording_id):
-	sql = """
-		INSERT INTO spectrums (row, col, value, recording_id)
-		VALUES %s
-	"""
-
 	st = timeit.default_timer()
 
-	# Mass-insertion technique
+	f = StringIO()
+	# visual_data is a 2D array (a nx63 matrix)
 	values_list = []
 	for rowIndex, rowData in enumerate(visual_data):
-		for colIndex, colData in enumerate(rowData): # colData is the value
-			value = [(rowIndex, colIndex, colData, recording_id)]
-			values_list.append(value)
-
+		items = []
+		for colIndex, colData in enumerate(rowData): 
+			value = (rowIndex, colIndex, colData, recording_id)
+			items.append('\t'.join(map(str, value)) + '\n')
+		f.writelines(items)
+	f.seek(0)
 
 	e = timeit.default_timer() - st
-	print("	Loop-iteration time: " + str(e))
+	print(" Loop-iteration time: " + str(e))
 
-	psycopg2.extras.execute_batch(curs, sql, values_list, page_size=100000)
+	curs.copy_from(f, 'spectrums', columns=('row', 'col', 'value', 'recording_id'))
 
 
 # Move songs from Downloads (where MASV-Map puts them) to this repository's "SongData" directory
