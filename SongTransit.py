@@ -39,6 +39,8 @@ def move_songs_to_DB():
 	# curs.execute("""SELECT * from songs"")
 	# rows = curs.fetchall()
 
+	removals = []
+
 	song_paths = glob.glob("./SongData/*.json")
 	for cur_song_path in song_paths:
 		with open(cur_song_path) as song_json:
@@ -76,16 +78,20 @@ def move_songs_to_DB():
 				print("Transaction COMMITTED!")
 			else:
 				# Maybe remove the .json?
-				print("Song already complete -> " + song_name)
-				pass
+				print("Song already complete -> " + song_name + " -- removing file")
+				removals.append(cur_song_path)
 
 			elapsed = timeit.default_timer() - start_time
 			print("Time elapsed -> " + str(elapsed))
 			print("	------")
 
+	print("Transition complete ~ closing DB cursor and connection")
 	# Close communicatio with the Database
 	curs.close()
 	dbConn.close()
+
+	print("Removing {} files that already exist in the DB".format(len(removals)))
+	remove_files(removals)
 
 
 
@@ -131,10 +137,15 @@ def db_insert_spectrum(curs, visual_data, recording_id):
 
 	curs.copy_from(f, 'spectrums', columns=('row', 'col', 'value', 'recording_id'))
 
+# os.remove each file path in list
+def remove_files(r_list):
+	for file_path in r_list:
+		os.remove(file_path)
 
 # Move songs from Downloads (where MASV-Map puts them) to this repository's "SongData" directory
 def transfer_songs():
 	for song_path in downloaded_song_paths:
+		# Note: Currently Windows path 
 		song_file_name = song_path.replace("C:\\Users\\user\\Downloads\\", "")
 		destination_path = destination_dir + song_file_name
 		os.rename(song_path, destination_path)
